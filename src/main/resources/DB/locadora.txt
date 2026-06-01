@@ -1,0 +1,362 @@
+CREATE DATABASE locadora
+GO
+USE locadora
+GO
+
+CREATE TABLE categoria (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(50) NOT NULL,
+    valor_diaria DOUBLE NOT NULL
+);
+
+CREATE TABLE carro (
+    placa VARCHAR(10) PRIMARY KEY,
+    marca VARCHAR(50),
+    modelo VARCHAR(50),
+    cor VARCHAR(30),
+    ano INT,
+    tp_combustivel VARCHAR(20),
+    qt_combustivel DOUBLE,
+    quilometragem INT,
+    cambio VARCHAR(20),
+    disponibilidade BOOLEAN,
+
+    categoria_id BIGINT,
+
+    CONSTRAINT fk_carro_categoria
+    FOREIGN KEY (categoria_id) REFERENCES categoria(id)
+); 
+
+CREATE TABLE locatario (
+    cpf VARCHAR(14) PRIMARY KEY,
+    nome VARCHAR(100),
+    habilitacao VARCHAR(30),
+    nascimento DATE,
+    logradouro VARCHAR(100),
+    numero INT,
+    cep INT,
+    cidade VARCHAR(50)
+);
+
+CREATE TABLE aluguel (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    qt_dias INT,
+    devolucao DATE,
+    data_retirada DATE,
+    valor_aluguel DOUBLE,
+    valor_total DOUBLE,
+    valor_combustivel DOUBLE,
+    danos BOOLEAN,
+
+    cpf_locatario VARCHAR(14),
+    placa_carro VARCHAR(10),
+
+    CONSTRAINT fk_aluguel_locatario
+    FOREIGN KEY (cpf_locatario) REFERENCES locatario(cpf),
+
+    CONSTRAINT fk_aluguel_carro
+    FOREIGN KEY (placa_carro) REFERENCES carro(placa)
+);
+
+CREATE TABLE reparo (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+
+    placa_carro VARCHAR(10),
+    entrada DATE NOT NULL,
+    dias_reparo INT NOT NULL,
+    defeito VARCHAR(200),
+    valor_reparo DOUBLE,
+
+    saida DATE NULL,
+
+    CONSTRAINT fk_reparo_carro
+    FOREIGN KEY (placa_carro) REFERENCES carro(placa)
+);
+
+
+GO
+
+INSERT INTO categoria (nome, valor_diaria) VALUES
+('ECONOMICO', 120.00),
+('INTERMEDIARIO', 180.00),
+('SUV', 300.00),
+('LUXO', 500.00);
+
+GO
+
+INSERT INTO carro VALUES
+('ABC1234', 'Toyota', 'Corolla', 'Prata', 2022, 'GASOLINA', 40, 15000, 'AUTOMATICO', true, 2),
+('DEF5678', 'Hyundai', 'HB20', 'Branco', 2021, 'ALCOOL', 35, 22000, 'MANUAL', true, 1),
+('GHI9012', 'Jeep', 'Compass', 'Preto', 2023, 'GASOLINA', 50, 8000, 'AUTOMATICO', false, 3),
+('JKL3456', 'BMW', '320i', 'Azul', 2024, 'GASOLINA', 60, 5000, 'AUTOMATICO', true, 4);
+
+GO
+
+INSERT INTO locatario VALUES
+('123.456.789-00', 'João Silva', 'AB123456', '1995-05-10', 'Rua A', 100, '01001-000', 'São Paulo'),
+('987.654.321-00', 'Maria Oliveira', 'CD987654', '1990-08-22', 'Av Brasil', 250, '22010-020', 'Rio de Janeiro'),
+('111.222.333-44', 'Carlos Souza', 'EF456789', '1988-03-15', 'Rua Central', 45, '30110-000', 'Belo Horizonte'),
+('555.666.777-88', 'Ana Lima', 'GH321654', '2000-12-01', 'Rua das Flores', 77, '80010-120', 'Curitiba'),
+('999.888.777-66', 'Pedro Santos', 'IJ654987', '1993-07-19', 'Av Paulista', 1500, '01310-100', 'São Paulo');
+
+GO
+
+INSERT INTO aluguel (
+qt_dias, devolucao, data_retirada, valor_aluguel, valor_total, valor_combustivel, danos, cpf_locatario, placa_carro
+) VALUES
+(5, '2026-05-30', '2026-05-25', 900, 950, 50, false, '123.456.789-00', 'ABC1234'),
+
+(3, NULL, '2026-05-29', 360, 360, 0, false, '987.654.321-00', 'DEF5678'),
+
+(7, '2026-05-28', '2026-05-21', 2100, 2350, 250, true, '111.222.333-44', 'GHI9012'),
+
+(10, NULL, '2026-05-20', 3000, 3000, 0, false, '555.666.777-88', 'JKL3456'),
+
+(2, '2026-05-31', '2026-05-29', 240, 240, 0, false, '999.888.777-66', 'DEF5678');
+
+GO
+
+INSERT INTO reparo (placa_carro, entrada, dias_reparo, defeito, valor_reparo, saida) VALUES
+('GHI9012', '2026-05-28', 3, 'Problema no motor', 1500, NULL),
+
+('DEF5678', '2026-05-25', 2, 'Troca de freios', 800, '2026-05-27'),
+
+('ABC1234', '2026-05-30', 5, 'Suspensão danificada', 2000, NULL),
+
+('JKL3456', '2026-05-10', 1, 'Troca de óleo', 300, '2026-05-11'),
+
+('DEF5678', '2026-05-01', 4, 'Problema elétrico', 1200, '2026-05-05');
+
+
+SELECT
+    c.placa,
+    c.marca,
+    c.modelo,
+    l.nome,
+    l.cpf,
+    a.qt_dias,
+    a.data_retirada
+FROM aluguel a
+INNER JOIN carro c
+    ON c.placa = a.placa_carro
+INNER JOIN locatario l
+    ON l.cpf = a.cpf_locatario
+WHERE a.data_retirada = CURDATE();
+
+SELECT
+    l.nome,
+    l.cpf,
+    l.habilitacao,
+    c.placa,
+    c.marca,
+    c.modelo,
+    a.data_retirada,
+    a.devolucao,
+    a.qt_dias,
+    a.valor_total
+FROM locatario l
+INNER JOIN aluguel a
+    ON l.cpf = a.cpf_locatario
+INNER JOIN carro c
+    ON c.placa = a.placa_carro
+WHERE l.cpf = $P{CPF};
+
+SELECT
+    c.placa,
+    c.marca,
+    c.modelo,
+    r.entrada,
+    r.dias_reparo,
+    r.defeito,
+    r.valor_reparo
+FROM reparo r
+INNER JOIN carro c
+    ON c.placa = r.placa_carro
+WHERE r.saida IS NULL;
+
+CREATE PROCEDURE listar_carros_disponiveis()
+BEGIN
+    DECLARE done INT DEFAULT 0;
+
+    DECLARE v_placa VARCHAR(10);
+    DECLARE v_marca VARCHAR(50);
+    DECLARE v_modelo VARCHAR(50);
+    DECLARE v_cor VARCHAR(30);
+    DECLARE v_ano INT;
+    DECLARE v_combustivel VARCHAR(20);
+    DECLARE v_disponivel BOOLEAN;
+
+    -- Cursor para percorrer carros
+    DECLARE cur CURSOR FOR
+        SELECT placa, marca, modelo, cor, ano, tp_combustivel, disponibilidade
+        FROM carro;
+
+    DECLARE CONTINUE HANDLER FOR NOT FOUND SET done = 1;
+
+    -- Tabela temporária para retorno
+    DROP TEMPORARY TABLE IF EXISTS tmp_carros;
+    CREATE TEMPORARY TABLE tmp_carros (
+        placa VARCHAR(10),
+        marca VARCHAR(50),
+        modelo VARCHAR(50),
+        cor VARCHAR(30),
+        ano INT,
+        combustivel VARCHAR(20)
+    );
+
+    OPEN cur;
+
+    read_loop: LOOP
+        FETCH cur INTO v_placa, v_marca, v_modelo, v_cor, v_ano, v_combustivel, v_disponivel;
+
+        IF done THEN
+            LEAVE read_loop;
+        END IF;
+
+        -- Filtra apenas disponíveis
+        IF v_disponivel = TRUE THEN
+            INSERT INTO tmp_carros VALUES
+            (v_placa, v_marca, v_modelo, v_cor, v_ano, v_combustivel);
+        END IF;
+
+    END LOOP;
+
+    CLOSE cur;
+
+    -- Retorno final
+    SELECT * FROM tmp_carros;
+
+END //
+
+DELIMITER ;
+
+CALL listar_carros_disponiveis();
+
+
+END
+
+
+
+create database locadora;
+use locadora;
+CREATE TABLE categoria (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    valor_diaria DECIMAL(10,2) NOT NULL
+);
+
+CREATE TABLE carro (
+    placa VARCHAR(10) PRIMARY KEY,
+    marca VARCHAR(50),
+    modelo VARCHAR(50),
+    cor VARCHAR(30),
+    ano INT,
+    tp_combustivel VARCHAR(20),
+    qt_combustivel DOUBLE,
+    quilometragem INT,
+    cambio VARCHAR(20),
+    disponibilidade BOOLEAN,
+    categoria_id BIGINT,
+    FOREIGN KEY (categoria_id) REFERENCES categoria(id)
+);
+
+CREATE TABLE locatario (
+    cpf VARCHAR(15) PRIMARY KEY,
+    nome VARCHAR(100),
+    habilitacao VARCHAR(20),
+    nascimento DATE,
+    logradouro VARCHAR(100),
+    numero INT,
+    cep VARCHAR(20),
+    cidade VARCHAR(50)
+);
+
+CREATE TABLE aluguel (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    cpf_locatario VARCHAR(15),
+    placa_carro VARCHAR(10),
+    qt_dias INT,
+    data_retirada DATE,
+    devolucao DATE,
+    valor_aluguel DECIMAL(10,2),
+    valor_total DECIMAL(10,2),
+    valor_combustivel DECIMAL(10,2),
+    danos BOOLEAN,
+    FOREIGN KEY (cpf_locatario) REFERENCES locatario(cpf),
+    FOREIGN KEY (placa_carro) REFERENCES carro(placa)
+);
+
+CREATE TABLE reparo (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    placa_carro VARCHAR(10),
+    entrada DATE,
+    dias_reparo INT,
+    defeito VARCHAR(255),
+    valor_reparo DECIMAL(10,2),
+    saida DATE,
+    FOREIGN KEY (placa_carro) REFERENCES carro(placa)
+);
+
+-- Categorias
+INSERT INTO categoria (nome, valor_diaria) VALUES
+('Econômico', 100.00),
+('Médio', 150.00),
+('Luxo', 300.00);
+
+-- Carros
+INSERT INTO carro (placa, marca, modelo, cor, ano, tp_combustivel, qt_combustivel, quilometragem, cambio, disponibilidade, categoria_id) VALUES
+('ABC1234', 'Ford', 'Ka', 'Vermelho', 2018, 'Gasolina', 50, 35000, 'Manual', TRUE, 1),
+('XYZ5678', 'Toyota', 'Corolla', 'Prata', 2020, 'Alcool', 60, 20000, 'Automático', TRUE, 2),
+('LMN8901', 'BMW', 'X5', 'Preto', 2022, 'Gasolina', 70, 10000, 'Automático', FALSE, 3);
+
+-- Locatários
+INSERT INTO locatario (cpf, nome, habilitacao, nascimento, logradouro, numero, cep, cidade) VALUES
+('12345678900', 'João Silva', 'H123456', '1985-06-15', 'Rua A', 123, '01010010', 'São Paulo'),
+('98765432100', 'Maria Souza', 'H654321', '1990-09-20', 'Rua B', 456, '02020020', 'Rio de Janeiro');
+
+-- Aluguéis
+INSERT INTO aluguel (cpf_locatario, placa_carro, qt_dias, data_retirada, devolucao, valor_aluguel, valor_total, valor_combustivel, danos) VALUES
+('12345678900', 'ABC1234', 5, '2026-06-01', '2026-06-06', 500, 550, 50, FALSE);
+
+-- Reparos
+INSERT INTO reparo (placa_carro, entrada, dias_reparo, defeito, valor_reparo, saida) VALUES
+('LMN8901', '2026-05-30', 3, 'Troca de óleo', 250, '2026-06-02');
+
+INSERT INTO carro (placa, marca, modelo, cor, ano, tp_combustivel, qt_combustivel, quilometragem, cambio, disponibilidade, categoria_id)
+VALUES
+('DEF5678', 'Honda', 'Civic', 'Preto', 2019, 'Gasolina', 45.0, 30000, 'Manual', true, 2),
+('GHI9012', 'Ford', 'Fiesta', 'Branco', 2018, 'Flex', 40.0, 40000, 'Manual', true, 1);
+
+INSERT INTO reparo (placa_carro, entrada, dias_reparo, defeito, valor_reparo, saida)
+VALUES
+('ABC1234', '2026-05-25', 5, 'Troca de pastilhas de freio', 300.00, NULL),
+('DEF5678', '2026-05-27', 3, 'Troca de óleo', 120.00, NULL),
+('GHI9012', '2026-05-28', 7, 'Problema na suspensão', 450.00, NULL);
+
+SELECT l.nome,
+       l.cpf,
+       c.placa,
+       c.marca,
+       c.modelo,
+       a.qt_dias,
+       a.data_retirada,
+       a.devolucao,
+       a.valor_total
+FROM locatario l
+JOIN aluguel a ON a.cpf_locatario = l.cpf
+JOIN carro c ON c.placa = a.placa_carro
+WHERE l.cpf = '12345678900'
+ORDER BY a.data_retirada DESC;
+
+INSERT INTO locatario (cpf, nome, habilitacao, nascimento, logradouro, numero, cep, cidade) VALUES
+('11111111111', 'Carlos Pereira', 'A1234567', '1988-01-10', 'Rua das Flores', 120, '01010-000', 'São Paulo'),
+('22222222222', 'Ana Souza', 'B7654321', '1992-06-25', 'Av. Brasil', 500, '22000-111', 'Rio de Janeiro'),
+('33333333333', 'Fernanda Lima', 'AB998877', '1985-09-15', 'Rua Central', 75, '30100-222', 'Belo Horizonte'),
+('44444444444', 'Ricardo Alves', 'C1122334', '1990-12-05', 'Rua Verde', 33, '40000-333', 'Salvador');
+
+INSERT INTO carro (placa, marca, modelo, cor, ano, tp_combustivel, qt_combustivel, quilometragem, cambio, disponibilidade, categoria_id) VALUES
+('ABA1111', 'Toyota', 'Corolla', 'Prata', 2022, 'Gasolina', 45.0, 15000, 'Automático', TRUE, 2),
+('BBB4222', 'Honda', 'Civic', 'Preto', 2021, 'Gasolina', 50.0, 20000, 'Automático', TRUE, 2),
+('CCC6333', 'Jeep', 'Compass', 'Branco', 2023, 'Flex', 55.0, 8000, 'Automático', TRUE, 3),
+('DDD9444', 'Fiat', 'Argo', 'Vermelho', 2020, 'Flex', 40.0, 35000, 'Manual', TRUE, 1),
+('EEE0555', 'BMW', '320i', 'Azul', 2023, 'Gasolina', 60.0, 5000, 'Automático', TRUE, 2);
